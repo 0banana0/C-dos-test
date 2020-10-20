@@ -14,6 +14,15 @@ static struct sockaddr_in server;
 static struct hostent *hp;
 static char ip[20] = {0};
 
+static void HTTPHandler()
+{
+    struct timeval timeout = {3, 0};
+
+    puts("Connected\n");
+
+    setsockopt(socket_desc, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(struct timeval));
+}
+
 int initSocket(char *web){
     //Create socket
     socket_desc = socket(AF_INET, SOCK_STREAM , 0);
@@ -33,6 +42,8 @@ int initSocket(char *web){
     server.sin_family = AF_INET;
     server.sin_port = htons(80);
 
+    HTTPHandler();
+
     //Connect to remote server
     if (connect(socket_desc, (struct sockaddr *)&server, sizeof(server)) < 0) {
         printf("connect error： %s", errno);
@@ -42,34 +53,28 @@ int initSocket(char *web){
     return 0;
 }
 
-int HTTPHandler()
+int sendData(char *data)
 {
-    char *message;
-    struct timeval timeout = {3, 0};
-
-    puts("Connected\n");
-
-    //Send some data
-    //http 协议
-    message = "GET / HTTP/1.1\r\nHost: www.cnblogs.com\r\n\r\n";
-
     //向服务器发送数据
-    if (send(socket_desc, message, strlen(message) , 0) < 0) {
+    if (send(socket_desc, data, strlen(data) , 0) < 0) {
         puts("Send failed\n");
         return 1;
     }
-    puts("Data Send\n");
 
-    setsockopt(socket_desc, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(struct timeval));
+    printf("Data Send %s\n", data);
+    
+    return 0;
+}
 
+int receiveData(char *recBuf)
+{
     //Receive a reply from the server
     //loop
     int size_recv, total_size = 0;
-    char chunk[512];
     while(1) {
-        memset(chunk , 0 , 512); //clear the variable
+        memset(recBuf , 0 , 512); //clear the variable
         //获取数据
-        if ((size_recv =  recv(socket_desc, chunk, 512, 0) ) == -1) {
+        if ((size_recv =  recv(socket_desc, recBuf, 512, 0) ) == -1) {
             if (errno == EWOULDBLOCK || errno == EAGAIN) {
                 printf("recv timeout ...\n");
                 break;
@@ -88,11 +93,9 @@ int HTTPHandler()
             break;
         } else {
             total_size += size_recv;
-            printf("%s" , chunk);
+            printf("%s" , recBuf);
         }
     }
 
     printf("Reply received, total_size = %d bytes\n", total_size);
-
-    return 0;
 }

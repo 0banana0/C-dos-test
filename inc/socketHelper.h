@@ -1,2 +1,3 @@
 int initSocket(char *web);
-int HTTPHandler(void);
+int sendData(char *data);
+int receiveData(char *recBuff);
